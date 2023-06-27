@@ -253,7 +253,7 @@ function initializeHook() {
                   hook.ApolloClient as any
                 ).queryManager.mutationStore?.getStore()
               : // Apollo Client 3.3
-                (hook.ApolloClient as any).queryManager.mutationStore
+                (hook.ApolloClient as any).queryManager.mutationStore ?? {}
           );
         hook.getCache = () => hook.ApolloClient?.cache.extract(true);
 

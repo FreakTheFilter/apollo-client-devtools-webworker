@@ -7,7 +7,7 @@ import gql from "graphql-tag";
 import Observable from "zen-observable";
 import { OperationDefinitionNode } from "graphql/language";
 
-import { version as devtoolsVersion } from "../manifest.json";
+import manifest from "../manifest.json";
 import Relay from "../../Relay";
 import {
   QueryInfo,
@@ -30,6 +30,8 @@ import {
   RELOAD_TAB_COMPLETE,
 } from "../constants";
 import { EXPLORER_SUBSCRIPTION_TERMINATION } from "../../application/components/Explorer/postMessageHelpers";
+
+const devtoolsVersion = manifest.version;
 
 declare global {
   type TCache = any;
@@ -56,7 +58,7 @@ function initializeHook() {
     getCache: () => {},
   };
 
-  Object.defineProperty(window, "__APOLLO_DEVTOOLS_GLOBAL_HOOK__", {
+  Object.defineProperty(globalThis, "__APOLLO_DEVTOOLS_GLOBAL_HOOK__", {
     get() {
       return hook;
     },
@@ -66,10 +68,10 @@ function initializeHook() {
   const clientRelay = new Relay();
 
   clientRelay.addConnection("tab", (message) => {
-    window.postMessage(message, "*");
+    globalThis.postMessage(message, "*");
   });
 
-  window.addEventListener("message", ({ data }) => {
+  globalThis.addEventListener("message", ({ data }) => {
     clientRelay.broadcast(data);
   });
 
@@ -82,11 +84,11 @@ function initializeHook() {
   }
 
   // Listen for tab refreshes
-  window.onbeforeunload = () => {
+  globalThis.onbeforeunload = () => {
     sendMessageToTab(RELOADING_TAB);
   };
 
-  window.addEventListener("load", () => {
+  globalThis.addEventListener("load", () => {
     sendMessageToTab(RELOAD_TAB_COMPLETE, {
       ApolloClient: !!hook.ApolloClient,
     });
@@ -100,7 +102,9 @@ function initializeHook() {
     sendMessageToTab(EXPLORER_RESPONSE, payload);
   }
 
-  function sendHookDataToDevTools(eventName: typeof CREATE_DEVTOOLS_PANEL | typeof UPDATE) {
+  function sendHookDataToDevTools(
+    eventName: typeof CREATE_DEVTOOLS_PANEL | typeof UPDATE
+  ) {
     // Tab Relay forwards this the devtools
     sendMessageToTab(
       eventName,
@@ -117,7 +121,7 @@ function initializeHook() {
       sendHookDataToDevTools(CREATE_DEVTOOLS_PANEL);
     } else {
       // try finding client again, if it's found findClient will send the CREATE_DEVTOOLS_PANEL event
-      findClient()
+      findClient();
     }
   });
 
@@ -220,16 +224,22 @@ function initializeHook() {
 
     function initializeDevtoolsHook() {
       if (count++ > 10) clearInterval(interval);
-      if (window.__APOLLO_CLIENT__) {
-        hook.ApolloClient = window.__APOLLO_CLIENT__;
+      if (globalThis.__APOLLO_CLIENT__) {
+        hook.ApolloClient = globalThis.__APOLLO_CLIENT__;
         hook.ApolloClient.__actionHookForDevTools(handleActionHookForDevtools);
-        hook.getQueries = () =>{
-          if((hook.ApolloClient as any).queryManager.getObservableQueries){
-            return getQueries((hook.ApolloClient as any).queryManager.getObservableQueries("active"));
+        hook.getQueries = () => {
+          if ((hook.ApolloClient as any).queryManager.getObservableQueries) {
+            return getQueries(
+              (hook.ApolloClient as any).queryManager.getObservableQueries(
+                "active"
+              )
+            );
           } else {
-            return getQueriesLegacy((hook.ApolloClient as any).queryManager.queries);
+            return getQueriesLegacy(
+              (hook.ApolloClient as any).queryManager.queries
+            );
           }
-        }
+        };
         hook.getMutations = () =>
           getMutations(
             (hook.ApolloClient as any).queryManager.mutationStore?.getStore
@@ -251,7 +261,7 @@ function initializeHook() {
     }
 
     interval = setInterval(initializeDevtoolsHook, 1000);
-    initializeDevtoolsHook() // call immediately to reduce lag if devtools are already available
+    initializeDevtoolsHook(); // call immediately to reduce lag if devtools are already available
   }
 
   findClient();

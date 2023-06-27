@@ -12,7 +12,7 @@ import gql from "graphql-tag";
 import Observable from "zen-observable";
 import { OperationDefinitionNode } from "graphql/language";
 
-import { version as devtoolsVersion } from "../manifest.json";
+import manifest from "../manifest.json";
 import Relay from "../../Relay";
 import {
   QueryInfo,
@@ -41,10 +41,12 @@ import { FetchPolicy } from "../../application/components/Explorer/Explorer";
 
 const DEVTOOLS_KEY = Symbol.for("apollo.devtools");
 
+const devtoolsVersion = manifest.version;
+
 declare global {
   type TCache = any;
 
-  interface Window {
+  interface globalThis {
     __APOLLO_CLIENT__: ApolloClient<TCache>;
     [DEVTOOLS_KEY]?: {
       push(client: ApolloClient<any>): void;
@@ -86,7 +88,7 @@ function initializeHook() {
     getCache: () => hook.ApolloClient?.cache.extract(true) ?? {},
   };
 
-  Object.defineProperty(window, "__APOLLO_DEVTOOLS_GLOBAL_HOOK__", {
+  Object.defineProperty(globalThis, "__APOLLO_DEVTOOLS_GLOBAL_HOOK__", {
     get() {
       return hook;
     },
@@ -96,10 +98,10 @@ function initializeHook() {
   const clientRelay = new Relay();
 
   clientRelay.addConnection("tab", (message) => {
-    window.postMessage(message, "*");
+    globalThis.postMessage(message, "*");
   });
 
-  window.addEventListener("message", ({ data }) => {
+  globalThis.addEventListener("message", ({ data }) => {
     clientRelay.broadcast(data);
   });
 
@@ -112,11 +114,11 @@ function initializeHook() {
   }
 
   // Listen for tab refreshes
-  window.onbeforeunload = () => {
+  globalThis.onbeforeunload = () => {
     sendMessageToTab(RELOADING_TAB);
   };
 
-  window.addEventListener("load", () => {
+  globalThis.addEventListener("load", () => {
     sendMessageToTab(RELOAD_TAB_COMPLETE, {
       ApolloClient: !!hook.ApolloClient,
     });
@@ -257,8 +259,8 @@ function initializeHook() {
 
     function initializeDevtoolsHook() {
       if (count++ > 10) clearInterval(interval);
-      if (window.__APOLLO_CLIENT__) {
-        registerClient(window.__APOLLO_CLIENT__);
+      if (globalThis.__APOLLO_CLIENT__) {
+        registerClient(globalThis.__APOLLO_CLIENT__);
       }
     }
 
@@ -284,8 +286,8 @@ function initializeHook() {
     sendHookDataToDevTools(CREATE_DEVTOOLS_PANEL);
   }
 
-  const preExisting = window[DEVTOOLS_KEY];
-  window[DEVTOOLS_KEY] = { push: registerClient };
+  const preExisting = globalThis[DEVTOOLS_KEY];
+  globalThis[DEVTOOLS_KEY] = { push: registerClient };
   if (Array.isArray(preExisting)) {
     preExisting.forEach(registerClient);
   }

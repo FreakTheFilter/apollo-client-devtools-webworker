@@ -33,6 +33,11 @@ import { EXPLORER_SUBSCRIPTION_TERMINATION } from "../../application/components/
 
 const devtoolsVersion = manifest.version;
 
+const postMessage =
+  typeof Window === "undefined"
+    ? (message) => globalThis.postMessage(message)
+    : (message) => window.postMessage(message, "*");
+
 declare global {
   type TCache = any;
 
@@ -68,7 +73,7 @@ function initializeHook() {
   const clientRelay = new Relay();
 
   clientRelay.addConnection("tab", (message) => {
-    globalThis.postMessage(message, "*");
+    postMessage(message);
   });
 
   globalThis.addEventListener("message", ({ data }) => {

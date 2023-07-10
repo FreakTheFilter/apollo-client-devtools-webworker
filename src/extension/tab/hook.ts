@@ -265,7 +265,42 @@ function initializeHook() {
     function initializeDevtoolsHook() {
       if (count++ > 10) clearInterval(interval);
       if (globalThis.__APOLLO_CLIENT__) {
+<<<<<<< HEAD
         registerClient(globalThis.__APOLLO_CLIENT__);
+=======
+        hook.ApolloClient = globalThis.__APOLLO_CLIENT__;
+        hook.ApolloClient?.__actionHookForDevTools(handleActionHookForDevtools);
+        hook.getQueries = () => {
+          if ((hook.ApolloClient as any).queryManager.getObservableQueries) {
+            return getQueries(
+              (hook.ApolloClient as any).queryManager.getObservableQueries(
+                "active"
+              )
+            );
+          } else {
+            return getQueriesLegacy(
+              (hook.ApolloClient as any).queryManager.queries
+            );
+          }
+        };
+        hook.getMutations = () =>
+          getMutations(
+            (hook.ApolloClient as any).queryManager.mutationStore?.getStore
+              ? // Apollo Client 3.0 - 3.2
+                (
+                  hook.ApolloClient as any
+                ).queryManager.mutationStore?.getStore()
+              : // Apollo Client 3.3
+                (hook.ApolloClient as any).queryManager.mutationStore ?? {}
+          );
+        hook.getCache = () => hook.ApolloClient?.cache.extract(true);
+
+        clearInterval(interval);
+        sendMessageToTab(CLIENT_FOUND);
+        // incase initial update was missed because the client wasn't ready, send the create devtools event.
+        // devtools checks to see if it's already created, so this won't create duplicate tabs
+        sendHookDataToDevTools(CREATE_DEVTOOLS_PANEL);
+>>>>>>> Commit build directory
       }
     }
 

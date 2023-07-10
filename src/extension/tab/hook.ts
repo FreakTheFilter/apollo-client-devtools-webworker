@@ -231,7 +231,7 @@ function initializeHook() {
       if (count++ > 10) clearInterval(interval);
       if (globalThis.__APOLLO_CLIENT__) {
         hook.ApolloClient = globalThis.__APOLLO_CLIENT__;
-        hook.ApolloClient.__actionHookForDevTools(handleActionHookForDevtools);
+        hook.ApolloClient?.__actionHookForDevTools(handleActionHookForDevtools);
         hook.getQueries = () => {
           if ((hook.ApolloClient as any).queryManager.getObservableQueries) {
             return getQueries(

@@ -43,21 +43,21 @@ const DEVTOOLS_KEY = Symbol.for("apollo.devtools");
 
 const devtoolsVersion = manifest.version;
 
+type AugmentedGlobalThis = typeof globalThis & {
+  __APOLLO_CLIENT__: ApolloClient<TCache>;
+  [DEVTOOLS_KEY]?: {
+    push(client: ApolloClient<any>): void;
+  };
+};
+
+const host: AugmentedGlobalThis = globalThis as AugmentedGlobalThis;
+
 const postMessage =
   typeof Window === "undefined"
-    ? (message) => globalThis.postMessage(message)
-    : (message) => window.postMessage(message, "*");
+    ? (message: any) => host.postMessage(message)
+    : (message: any) => window.postMessage(message, "*");
 
-declare global {
-  type TCache = any;
-
-  interface globalThis {
-    __APOLLO_CLIENT__: ApolloClient<TCache>;
-    [DEVTOOLS_KEY]?: {
-      push(client: ApolloClient<any>): void;
-    };
-  }
-}
+type TCache = any;
 
 type Hook = {
   ApolloClient: ApolloClient<any> | undefined;
@@ -93,7 +93,7 @@ function initializeHook() {
     getCache: () => hook.ApolloClient?.cache.extract(true) ?? {},
   };
 
-  Object.defineProperty(globalThis, "__APOLLO_DEVTOOLS_GLOBAL_HOOK__", {
+  Object.defineProperty(host, "__APOLLO_DEVTOOLS_GLOBAL_HOOK__", {
     get() {
       return hook;
     },
@@ -106,7 +106,7 @@ function initializeHook() {
     postMessage(message);
   });
 
-  globalThis.addEventListener("message", ({ data }) => {
+  host.addEventListener("message", ({ data }) => {
     clientRelay.broadcast(data);
   });
 
@@ -119,11 +119,11 @@ function initializeHook() {
   }
 
   // Listen for tab refreshes
-  globalThis.onbeforeunload = () => {
+  host.onbeforeunload = () => {
     sendMessageToTab(RELOADING_TAB);
   };
 
-  globalThis.addEventListener("load", () => {
+  host.addEventListener("load", () => {
     sendMessageToTab(RELOAD_TAB_COMPLETE, {
       ApolloClient: !!hook.ApolloClient,
     });
@@ -264,43 +264,8 @@ function initializeHook() {
 
     function initializeDevtoolsHook() {
       if (count++ > 10) clearInterval(interval);
-      if (globalThis.__APOLLO_CLIENT__) {
-<<<<<<< HEAD
-        registerClient(globalThis.__APOLLO_CLIENT__);
-=======
-        hook.ApolloClient = globalThis.__APOLLO_CLIENT__;
-        hook.ApolloClient?.__actionHookForDevTools(handleActionHookForDevtools);
-        hook.getQueries = () => {
-          if ((hook.ApolloClient as any).queryManager.getObservableQueries) {
-            return getQueries(
-              (hook.ApolloClient as any).queryManager.getObservableQueries(
-                "active"
-              )
-            );
-          } else {
-            return getQueriesLegacy(
-              (hook.ApolloClient as any).queryManager.queries
-            );
-          }
-        };
-        hook.getMutations = () =>
-          getMutations(
-            (hook.ApolloClient as any).queryManager.mutationStore?.getStore
-              ? // Apollo Client 3.0 - 3.2
-                (
-                  hook.ApolloClient as any
-                ).queryManager.mutationStore?.getStore()
-              : // Apollo Client 3.3
-                (hook.ApolloClient as any).queryManager.mutationStore ?? {}
-          );
-        hook.getCache = () => hook.ApolloClient?.cache.extract(true);
-
-        clearInterval(interval);
-        sendMessageToTab(CLIENT_FOUND);
-        // incase initial update was missed because the client wasn't ready, send the create devtools event.
-        // devtools checks to see if it's already created, so this won't create duplicate tabs
-        sendHookDataToDevTools(CREATE_DEVTOOLS_PANEL);
->>>>>>> Commit build directory
+      if (host.__APOLLO_CLIENT__) {
+        registerClient(host.__APOLLO_CLIENT__);
       }
     }
 
@@ -326,8 +291,8 @@ function initializeHook() {
     sendHookDataToDevTools(CREATE_DEVTOOLS_PANEL);
   }
 
-  const preExisting = globalThis[DEVTOOLS_KEY];
-  globalThis[DEVTOOLS_KEY] = { push: registerClient };
+  const preExisting = host[DEVTOOLS_KEY];
+  host[DEVTOOLS_KEY] = { push: registerClient };
   if (Array.isArray(preExisting)) {
     preExisting.forEach(registerClient);
   }
